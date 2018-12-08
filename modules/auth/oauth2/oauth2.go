@@ -172,6 +172,11 @@ func createProvider(providerName, providerType, clientID, clientSecret, openIDCo
 		}
 	case "twitter":
 		provider = twitter.NewAuthenticate(clientID, clientSecret, callbackURL)
+	case "olympia":
+		// Olympia is now compatible with GitLab
+		provider = gitlab.NewCustomisedURL(clientID, clientSecret, callbackURL,
+			customURLMapping.AuthURL, customURLMapping.TokenURL,
+			customURLMapping.ProfileURL, "read")
 	}
 
 	// always set the name if provider is created so we can support multiple setups of 1 provider

@@ -43,6 +43,8 @@ var OAuth2Providers = map[string]OAuth2Provider{
 	"gplus":         {Name: "gplus", DisplayName: "Google+", Image: "/img/auth/google_plus.png"},
 	"openidConnect": {Name: "openidConnect", DisplayName: "OpenID Connect", Image: "/img/auth/openid_connect.png"},
 	"twitter":       {Name: "twitter", DisplayName: "Twitter", Image: "/img/auth/twitter.png"},
+	// TODO: own logo
+	"olympia":       {Name: "olympia", DisplayName: "Olympia", Image: "/img/auth/bitbucket.png"},
 }
 
 // OAuth2DefaultCustomURLMappings contains the map of default URL's for OAuth2 providers that are allowed to have custom urls
