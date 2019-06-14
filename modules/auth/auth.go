@@ -154,6 +154,7 @@ func SignedInUser(ctx *macaron.Context, sess session.Store) (*models.User, bool)
 						Name:     webAuthUser,
 						Email:    email,
 						Passwd:   webAuthUser,
+						LoginType: models.LoginReverseProxy,
 						IsActive: true,
 					}
 					webFullName := ctx.Req.Header.Get(setting.ReverseProxyAuthFullName)

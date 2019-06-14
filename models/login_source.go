@@ -38,6 +38,7 @@ const (
 	LoginPAM              // 4
 	LoginDLDAP            // 5
 	LoginOAuth2           // 6
+	LoginReverseProxy     // 7
 )
 
 // LoginNames contains the name of LoginType values.
@@ -47,6 +48,7 @@ var LoginNames = map[LoginType]string{
 	LoginSMTP:   "SMTP",
 	LoginPAM:    "PAM",
 	LoginOAuth2: "OAuth2",
+	LoginReverseProxy: "Reverse Proxy",
 }
 
 // SecurityProtocolNames contains the name of SecurityProtocol values.
