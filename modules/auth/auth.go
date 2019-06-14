@@ -151,6 +151,10 @@ func SignedInUser(ctx *macaron.Context, sess session.Store) (*models.User, bool)
 						Passwd:   webAuthUser,
 						IsActive: true,
 					}
+					webFullName := ctx.Req.Header.Get(setting.ReverseProxyAuthFullName)
+					if len(webFullName) > 0 {
+						u.FullName = webFullName
+					}
 					if err = models.CreateUser(u); err != nil {
 						// FIXME: should I create a system notice?
 						log.Error("CreateUser: %v", err)
