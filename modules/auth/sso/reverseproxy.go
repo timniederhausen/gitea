@@ -104,7 +104,12 @@ func (r *ReverseProxy) newUser(ctx *macaron.Context) *models.User {
 		Name:     username,
 		Email:    email,
 		Passwd:   username,
+		LoginType: models.LoginReverseProxy,
 		IsActive: true,
+	}
+	fullName := ctx.Req.Header.Get(setting.ReverseProxyAuthFullName)
+	if len(fullName) > 0 {
+		user.FullName = fullName
 	}
 	if err := models.CreateUser(user); err != nil {
 		// FIXME: should I create a system notice?
