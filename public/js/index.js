@@ -1026,13 +1026,13 @@ function initMigration() {
     const toggleMigrations = function() {
         const authUserName = $('#auth_username').val();
         const cloneAddr = $('#clone_addr').val();
-        if (!$('#mirror').is(":checked") && (authUserName!=undefined && authUserName.length > 0)
-        && (cloneAddr!=undefined && (cloneAddr.startsWith("https://github.com") || cloneAddr.startsWith("http://github.com")))) {
-            $('#migrate_items').show();
-        } else {
-            $('#migrate_items').hide();
-        }
+    if (!$('#mirror').is(":checked") && (authUserName!=undefined && authUserName.length > 0)
+    && (cloneAddr!=undefined && (cloneAddr.startsWith("https://github.com") || cloneAddr.startsWith("http://github.com")))) {
+        $('#migrate_items').show();
+    } else {
+        $('#migrate_items').hide();
     }
+}
 
     toggleMigrations();
 
@@ -2218,7 +2218,7 @@ $(document).ready(function () {
                 $('.issue-checkbox input[type="checkbox"]').each(function(_,e){ e.checked = false; });
             }
             reload();
-        });
+    });
     });
 
     // NOTICE: This event trigger targets Firefox caching behaviour, as the checkboxes stay checked after reload
@@ -2414,10 +2414,6 @@ function initVueComponents(){
             organizationsTotalCount: {
                 type: Number,
                 default: 0
-            },
-            moreReposLink: {
-                type: String,
-                default: ''
             }
         },
 
@@ -2429,6 +2425,7 @@ function initVueComponents(){
                 reposFilter: 'all',
                 searchQuery: '',
                 isLoading: false,
+                page: 1,
                 repoTypes: {
                     'all': {
                         count: 0,
@@ -2461,7 +2458,8 @@ function initVueComponents(){
             searchURL: function() {
                 return this.suburl + '/api/v1/repos/search?sort=updated&order=desc&uid=' + this.uid + '&q=' + this.searchQuery
                                    + '&limit=' + this.searchLimit + '&mode=' + this.repoTypes[this.reposFilter].searchMode
-                                   + (this.reposFilter !== 'all' ? '&exclusive=1' : '');
+                                   + (this.reposFilter !== 'all' ? '&exclusive=1' : '')
+                                   + '&page=' + this.page;
             },
             repoTypeCount: function() {
                 return this.repoTypes[this.reposFilter].count;
@@ -2486,6 +2484,7 @@ function initVueComponents(){
                 this.reposFilter = filter;
                 this.repos = [];
                 this.repoTypes[filter].count = 0;
+                this.page = 1;
                 this.searchRepos(filter);
             },
 
@@ -2515,7 +2514,11 @@ function initVueComponents(){
 
                 $.getJSON(searchedURL, function(result, _textStatus, request) {
                     if (searchedURL == self.searchURL) {
-                        self.repos = result.data;
+                        if (self.page > 1) {
+                            result.data.forEach(repo => self.repos.push(repo));
+                        } else {
+                            self.repos = result.data;
+                        }
                         const count = request.getResponseHeader('X-Total-Count');
                         if (searchedQuery === '' && searchedMode === '') {
                             self.reposTotalCount = count;
@@ -2527,6 +2530,11 @@ function initVueComponents(){
                         self.isLoading = false;
                     }
                 });
+            },
+
+            searchMoreRepos: function() {
+                this.page += 1;
+                this.searchRepos(this.reposFilter);
             },
 
             repoClass: function(repo) {
