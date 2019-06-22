@@ -2257,10 +2257,6 @@ function initVueComponents(){
                 type: Number,
                 default: 0
             },
-            moreReposLink: {
-                type: String,
-                default: ''
-            }
         },
 
         data: function() {
@@ -2271,6 +2267,7 @@ function initVueComponents(){
                 reposFilter: 'all',
                 searchQuery: '',
                 isLoading: false,
+                page: 1,
                 repoTypes: {
                     'all': {
                         count: 0,
@@ -2303,7 +2300,8 @@ function initVueComponents(){
             searchURL: function() {
                 return this.suburl + '/api/v1/repos/search?sort=updated&order=desc&uid=' + this.uid + '&q=' + this.searchQuery
                                    + '&limit=' + this.searchLimit + '&mode=' + this.repoTypes[this.reposFilter].searchMode
-                                   + (this.reposFilter !== 'all' ? '&exclusive=1' : '');
+                                   + (this.reposFilter !== 'all' ? '&exclusive=1' : '')
+                                   + '&page=' + this.page;
             },
             repoTypeCount: function() {
                 return this.repoTypes[this.reposFilter].count;
@@ -2328,6 +2326,7 @@ function initVueComponents(){
                 this.reposFilter = filter;
                 this.repos = [];
                 this.repoTypes[filter].count = 0;
+                this.page = 1;
                 this.searchRepos(filter);
             },
 
@@ -2356,8 +2355,11 @@ function initVueComponents(){
                 var searchedQuery = this.searchQuery;
 
                 $.getJSON(searchedURL, function(result, textStatus, request) {
-                    if (searchedURL == self.searchURL) {
-                        self.repos = result.data;
+                    if (searchedURL === self.searchURL) {
+                        if (self.page !== 1)
+                            result.data.forEach(v => self.repos.push(v));
+                        else
+                            self.repos = result.data;
                         var count = request.getResponseHeader('X-Total-Count');
                         if (searchedQuery === '' && searchedMode === '') {
                             self.reposTotalCount = count;
@@ -2365,10 +2367,15 @@ function initVueComponents(){
                         self.repoTypes[reposFilter].count = count;
                     }
                 }).always(function() {
-                    if (searchedURL == self.searchURL) {
+                    if (searchedURL === self.searchURL) {
                         self.isLoading = false;
                     }
                 });
+            },
+
+            searchMoreRepos: function() {
+                this.page += 1;
+                this.searchRepos(this.reposFilter);
             },
 
             repoClass: function(repo) {
