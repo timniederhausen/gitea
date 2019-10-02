@@ -38,7 +38,7 @@ import (
 
 	"github.com/Unknwon/com"
 	"github.com/go-xorm/xorm"
-	ini "gopkg.in/ini.v1"
+	"gopkg.in/ini.v1"
 	"xorm.io/builder"
 )
 
@@ -2251,6 +2251,51 @@ func GitGcRepos() error {
 				}
 				return nil
 			})
+}
+
+func IndexRepos() error {
+	return x.Where("id > 0").BufferSize(setting.IterateBufferSize).Iterate(new(Repository), func(idx int, bean interface{}) error {
+		repo := bean.(*Repository)
+		if err := repo.GetOwner(); err != nil {
+			return err
+		}
+
+		repoPath := repo.RepoPath()
+		gitRepo, err := git.OpenRepository(repoPath)
+		if err != nil {
+			return err
+		}
+
+		isEmpty, err := gitRepo.IsEmpty()
+		if err != nil {
+			return err
+		}
+
+		if repo.IsEmpty && !isEmpty {
+			// Try to get HEAD branch and set it as default branch.
+			headBranch, err := gitRepo.GetHEADBranch()
+			if err != nil {
+				return err
+			}
+			if headBranch != nil {
+				repo.DefaultBranch = headBranch.Name
+			}
+			if err = SyncReleasesWithTags(repo, gitRepo); err != nil {
+				log.Error("Failed to synchronize tags to releases for repository: %v", err)
+			}
+		}
+		repo.IsEmpty = isEmpty
+
+		if err := repo.UpdateSize(); err != nil {
+			log.Error("Failed to update size for repository: %v", err)
+			return err
+		}
+
+		if !repo.IsEmpty {
+			UpdateRepoIndexer(repo)
+		}
+		return UpdateRepository(repo, false)
+	})
 }
 
 type repoChecker struct {
