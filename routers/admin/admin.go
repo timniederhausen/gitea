@@ -133,6 +133,7 @@ const (
 	syncExternalUsers
 	gitFsck
 	deleteGeneratedRepositoryAvatars
+	indexRepos
 )
 
 // Dashboard show admin panel dashboard
@@ -178,6 +179,9 @@ func Dashboard(ctx *context.Context) {
 		case deleteGeneratedRepositoryAvatars:
 			success = ctx.Tr("admin.dashboard.delete_generated_repository_avatars_success")
 			err = models.RemoveRandomAvatars()
+		case indexRepos:
+			success = "index_success"
+			err = models.IndexRepos()
 		}
 
 		if err != nil {

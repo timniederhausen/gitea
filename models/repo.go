@@ -138,17 +138,17 @@ const (
 
 // Repository represents a git repository.
 type Repository struct {
-	ID                  int64                  `xorm:"pk autoincr"`
+	ID            int64  `xorm:"pk autoincr"`
 	OwnerID             int64                  `xorm:"UNIQUE(s) index"`
-	OwnerName           string                 `xorm:"-"`
-	Owner               *User                  `xorm:"-"`
-	LowerName           string                 `xorm:"UNIQUE(s) INDEX NOT NULL"`
-	Name                string                 `xorm:"INDEX NOT NULL"`
-	Description         string                 `xorm:"TEXT"`
-	Website             string                 `xorm:"VARCHAR(2048)"`
+	OwnerName     string `xorm:"-"`
+	Owner         *User  `xorm:"-"`
+	LowerName     string `xorm:"UNIQUE(s) INDEX NOT NULL"`
+	Name          string `xorm:"INDEX NOT NULL"`
+	Description   string `xorm:"TEXT"`
+	Website       string `xorm:"VARCHAR(2048)"`
 	OriginalServiceType structs.GitServiceType `xorm:"index"`
 	OriginalURL         string                 `xorm:"VARCHAR(2048)"`
-	DefaultBranch       string
+	DefaultBranch string
 
 	NumWatches          int
 	NumStars            int
@@ -167,8 +167,8 @@ type Repository struct {
 	IsPrivate  bool `xorm:"INDEX"`
 	IsEmpty    bool `xorm:"INDEX"`
 	IsArchived bool `xorm:"INDEX"`
-	IsMirror   bool `xorm:"INDEX"`
-	*Mirror    `xorm:"-"`
+	IsMirror bool `xorm:"INDEX"`
+	*Mirror  `xorm:"-"`
 	Status     RepositoryStatus `xorm:"NOT NULL DEFAULT 0"`
 
 	ExternalMetas map[string]string `xorm:"-"`
@@ -305,7 +305,7 @@ func (repo *Repository) innerAPIFormat(e Engine, mode AccessMode, isParent bool)
 			EnableTimeTracker:                config.EnableTimetracker,
 			AllowOnlyContributorsToTrackTime: config.AllowOnlyContributorsToTrackTime,
 			EnableIssueDependencies:          config.EnableDependencies,
-		}
+	}
 	} else if unit, err := repo.getUnit(e, UnitTypeExternalTracker); err == nil {
 		config := unit.ExternalTrackerConfig()
 		hasIssues = true
@@ -324,7 +324,7 @@ func (repo *Repository) innerAPIFormat(e Engine, mode AccessMode, isParent bool)
 		config := unit.ExternalWikiConfig()
 		externalWiki = &api.ExternalWiki{
 			ExternalWikiURL: config.ExternalWikiURL,
-		}
+	}
 	}
 	hasPullRequests := false
 	ignoreWhitespaceConflicts := false
@@ -555,8 +555,8 @@ func (repo *Repository) mustOwnerName(e Engine) string {
 func (repo *Repository) ComposeMetas() map[string]string {
 	if repo.ExternalMetas == nil {
 		repo.ExternalMetas = map[string]string{
-			"user":     repo.MustOwner().Name,
-			"repo":     repo.Name,
+			"user": repo.MustOwner().Name,
+			"repo": repo.Name,
 			"repoPath": repo.RepoPath(),
 		}
 		unit, err := repo.GetUnit(UnitTypeExternalTracker)
@@ -2348,6 +2348,51 @@ func GitGcRepos() error {
 				}
 				return nil
 			})
+}
+
+func IndexRepos() error {
+	return x.Where("id > 0").BufferSize(setting.Database.IterateBufferSize).Iterate(new(Repository), func(idx int, bean interface{}) error {
+		repo := bean.(*Repository)
+		if err := repo.GetOwner(); err != nil {
+			return err
+		}
+
+		repoPath := repo.RepoPath()
+		gitRepo, err := git.OpenRepository(repoPath)
+		if err != nil {
+			return err
+		}
+
+		isEmpty, err := gitRepo.IsEmpty()
+		if err != nil {
+			return err
+		}
+
+		if repo.IsEmpty && !isEmpty {
+			// Try to get HEAD branch and set it as default branch.
+			headBranch, err := gitRepo.GetHEADBranch()
+			if err != nil {
+				return err
+			}
+			if headBranch != nil {
+				repo.DefaultBranch = headBranch.Name
+			}
+			if err = SyncReleasesWithTags(repo, gitRepo); err != nil {
+				log.Error("Failed to synchronize tags to releases for repository: %v", err)
+			}
+		}
+		repo.IsEmpty = isEmpty
+
+		if err := repo.UpdateSize(); err != nil {
+			log.Error("Failed to update size for repository: %v", err)
+			return err
+		}
+
+		if !repo.IsEmpty {
+			UpdateRepoIndexer(repo)
+		}
+		return UpdateRepository(repo, false)
+	})
 }
 
 type repoChecker struct {
